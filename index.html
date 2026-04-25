@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video Compressor</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&family=Orbitron:wght@700;900&display=swap');
+:root{
+  --bg:#0a0d12;--bg2:#0e1219;--card:#111720;--border:#1c2a38;
+  --accent:#00e5c8;--accent2:#00b8a0;--text:#8fa3b8;--text2:#c5d5e5;
+  --white:#e8f0f8;--danger:#ff4d6d;
+  --mono:'Share Tech Mono',monospace;--head:'Orbitron',sans-serif;--body:'Rajdhani',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--body);min-height:100vh;padding:24px 16px 60px}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.35;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E")}
+.wrap{max-width:680px;margin:0 auto;position:relative;z-index:1}
+
+/* LOADER */
+#loader{position:fixed;inset:0;background:rgba(10,13,18,.97);z-index:999;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+  transition:opacity .5s}
+#loader.gone{opacity:0;pointer-events:none}
+.ld-title{font-family:var(--head);font-size:12px;letter-spacing:.35em;color:var(--accent);text-transform:uppercase}
+.ld-bar{width:260px;height:2px;background:var(--border);border-radius:2px;overflow:hidden}
+.ld-fill{height:100%;width:0%;background:var(--accent);box-shadow:0 0 10px rgba(0,229,200,.6);transition:width .3s}
+.ld-msg{font-family:var(--mono);font-size:10px;color:var(--text);letter-spacing:.06em;text-align:center;max-width:300px;line-height:1.7}
+
+/* HERO */
+.hero{text-align:center;margin-bottom:34px;padding-top:12px}
+.hero h1{font-family:var(--head);font-size:clamp(24px,7.5vw,48px);font-weight:900;letter-spacing:.06em;
+  color:var(--accent);line-height:1.1;animation:glow 3s ease-in-out infinite alternate}
+@keyframes glow{
+  from{text-shadow:0 0 20px rgba(0,229,200,.3),0 0 40px rgba(0,229,200,.1)}
+  to{text-shadow:0 0 40px rgba(0,229,200,.6),0 0 80px rgba(0,229,200,.25)}}
+.hero .sub{font-family:var(--body);font-weight:600;letter-spacing:.25em;font-size:10px;
+  color:var(--text);margin-top:8px;text-transform:uppercase}
+.hero .sub b{color:var(--accent);font-weight:600}
+
+/* CARD */
+.card{background:var(--card);border:1px solid var(--border);border-radius:4px;
+  padding:20px 18px;margin-bottom:12px;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.45}
+.ctitle{font-family:var(--body);font-weight:700;letter-spacing:.2em;font-size:10px;
+  color:var(--accent);text-transform:uppercase;margin-bottom:16px;padding-bottom:9px;
+  border-bottom:1px solid var(--border)}
+
+/* DROPZONE */
+.dz{border:1.5px dashed var(--border);border-radius:4px;padding:38px 16px;text-align:center;
+  cursor:pointer;transition:border-color .2s,background .2s;position:relative;
+  background:rgba(0,229,200,.02)}
+.dz:hover,.dz.on{border-color:var(--accent);background:rgba(0,229,200,.05)}
+.dz input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.dz-icon{font-size:28px;margin-bottom:9px;display:block;opacity:.45}
+.dz-lbl{font-family:var(--body);font-size:13px;letter-spacing:.15em;text-transform:uppercase;color:var(--text)}
+.dz-sub{font-family:var(--mono);font-size:9px;color:var(--text);opacity:.45;margin-top:5px}
+
+/* FILE INFO */
+.finfo{display:none;align-items:center;gap:11px;background:rgba(0,229,200,.04);
+  border:1px solid rgba(0,229,200,.18);border-radius:4px;padding:11px 13px;margin-top:11px}
+.finfo.on{display:flex}
+.fi-icon{font-size:20px;flex-shrink:0}
+.fi-det{flex:1;min-width:0}
+.fi-name{font-family:var(--mono);font-size:11px;color:var(--white);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fi-size{font-family:var(--mono);font-size:9px;color:var(--accent);opacity:.7;margin-top:2px}
+.btn-rm{background:none;border:1px solid var(--border);border-radius:2px;color:var(--text);
+  font-family:var(--mono);font-size:9px;padding:4px 7px;cursor:pointer;letter-spacing:.08em;
+  transition:border-color .15s,color .15s;flex-shrink:0}
+.btn-rm:hover{border-color:var(--danger);color:var(--danger)}
+
+/* FORM */
+.flabel{display:block;font-family:var(--body);font-weight:600;letter-spacing:.18em;font-size:9px;
+  text-transform:uppercase;color:var(--text);margin-bottom:6px}
+.fg{margin-bottom:16px}
+select{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:3px;
+  color:var(--white);font-family:var(--mono);font-size:13px;padding:10px 32px 10px 11px;
+  outline:none;appearance:none;cursor:pointer;transition:border-color .2s;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7' viewBox='0 0 12 7'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2300e5c8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 11px center}
+select:focus{border-color:var(--accent)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+.rrow{display:flex;align-items:center;gap:11px}
+input[type=range]{flex:1;-webkit-appearance:none;height:3px;background:var(--border);
+  border-radius:2px;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;
+  background:var(--accent);border-radius:50%;box-shadow:0 0 8px rgba(0,229,200,.5)}
+.rval{font-family:var(--mono);font-size:13px;color:var(--accent);min-width:32px;text-align:right}
+
+.rgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.rbtn{background:var(--bg2);border:1px solid var(--border);border-radius:3px;color:var(--text);
+  font-family:var(--mono);font-size:10px;padding:8px 5px;cursor:pointer;text-align:center;
+  transition:all .15s;letter-spacing:.06em}
+.rbtn:hover{border-color:var(--accent);color:var(--accent2)}
+.rbtn.on{border-color:var(--accent);color:var(--accent);background:rgba(0,229,200,.08)}
+
+.trow{display:flex;align-items:center;justify-content:space-between;
+  padding:8px 0;border-bottom:1px solid var(--border)}
+.trow:last-child{border-bottom:none}
+.tlbl{font-family:var(--body);font-weight:600;letter-spacing:.1em;font-size:11px;
+  text-transform:uppercase;color:var(--text2)}
+.tog{position:relative;width:36px;height:20px}
+.tog input{opacity:0;width:0;height:0}
+.togtr{position:absolute;inset:0;background:var(--border);border-radius:20px;cursor:pointer;transition:background .2s}
+.togtr::after{content:'';position:absolute;top:3px;left:3px;width:14px;height:14px;
+  background:var(--text);border-radius:50%;transition:transform .2s,background .2s}
+.tog input:checked+.togtr{background:rgba(0,229,200,.3)}
+.tog input:checked+.togtr::after{transform:translateX(16px);background:var(--accent);box-shadow:0 0 8px rgba(0,229,200,.5)}
+
+.cpills{display:flex;gap:7px;flex-wrap:wrap}
+.cpill{background:var(--bg2);border:1px solid var(--border);border-radius:2px;color:var(--text);
+  font-family:var(--mono);font-size:11px;padding:7px 13px;cursor:pointer;letter-spacing:.08em;transition:all .15s}
+.cpill:hover{border-color:var(--accent);color:var(--accent2)}
+.cpill.on{border-color:var(--accent);color:var(--accent);background:rgba(0,229,200,.08)}
+
+.ibox{background:rgba(0,229,200,.04);border-left:2px solid var(--accent);border-radius:0 3px 3px 0;
+  padding:9px 11px;font-family:var(--mono);font-size:9px;color:var(--text);line-height:1.65;margin-top:9px}
+.ibox b{color:var(--accent);font-weight:400}
+
+/* PROGRESS */
+.pwrap{display:none;margin-bottom:14px}
+.pwrap.on{display:block}
+.phdr{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;
+  color:var(--text);margin-bottom:5px;letter-spacing:.1em}
+.pbar{height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+.pfill{height:100%;background:linear-gradient(90deg,var(--accent2),var(--accent));
+  border-radius:2px;width:0%;transition:width .35s ease;box-shadow:0 0 8px rgba(0,229,200,.5)}
+.logbox{background:var(--bg);border:1px solid var(--border);border-radius:3px;
+  padding:9px 11px;font-family:var(--mono);font-size:9px;color:var(--text);
+  line-height:1.75;max-height:120px;overflow-y:auto;margin-top:9px;letter-spacing:.03em}
+.ll{display:block}
+.ll.ok{color:var(--accent)}
+.ll.er{color:var(--danger)}
+
+/* STATS */
+.srow{display:none;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:14px}
+.srow.on{display:grid}
+.sbox{background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:10px;text-align:center}
+.sv{font-family:var(--mono);font-size:14px;color:var(--accent);display:block}
+.sl{font-family:var(--body);font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--text);margin-top:3px;display:block}
+
+/* BUTTONS */
+.btnc{width:100%;background:transparent;border:1.5px solid var(--accent);border-radius:3px;
+  color:var(--accent);font-family:var(--head);font-weight:700;font-size:12px;
+  letter-spacing:.25em;text-transform:uppercase;padding:15px;cursor:pointer;
+  position:relative;overflow:hidden;transition:color .2s,box-shadow .2s}
+.btnc::before{content:'';position:absolute;inset:0;background:var(--accent);
+  transform:translateX(-100%);transition:transform .25s ease;z-index:0}
+.btnc:hover{color:var(--bg);box-shadow:0 0 20px rgba(0,229,200,.3)}
+.btnc:hover::before{transform:translateX(0)}
+.btnc span{position:relative;z-index:1}
+.btnc:disabled{opacity:.3;cursor:not-allowed;pointer-events:none}
+
+.btnd{display:none;width:100%;margin-top:10px;background:var(--accent);border:none;
+  border-radius:3px;color:var(--bg);font-family:var(--head);font-weight:700;font-size:12px;
+  letter-spacing:.18em;text-transform:uppercase;padding:15px;cursor:pointer;
+  text-align:center;text-decoration:none;
+  box-shadow:0 0 20px rgba(0,229,200,.3);transition:box-shadow .2s,opacity .2s}
+.btnd.on{display:block}
+.btnd:hover{box-shadow:0 0 32px rgba(0,229,200,.5);opacity:.9}
+
+.note{font-family:var(--mono);font-size:9px;color:var(--text);opacity:.55;
+  text-align:center;line-height:1.8;margin-top:16px;letter-spacing:.04em}
+
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+</style>
+</head>
+<body>
+
+<div id="loader">
+  <div class="ld-title">Cargando FFmpeg.wasm</div>
+  <div class="ld-bar"><div class="ld-fill" id="ldFill"></div></div>
+  <div class="ld-msg" id="ldMsg">Descargando motor de compresión (~30 MB)...<br>Esto sólo ocurre la primera vez.</div>
+</div>
+
+<div class="wrap">
+  <div class="hero">
+    <h1>VIDEO COMPRESSOR</h1>
+    <div class="sub">FFMPEG.WASM · <b>H.264</b> · <b>H.265</b> · <b>VP9</b> · DESCARGA DIRECTA</div>
+  </div>
+
+  <!-- ARCHIVO -->
+  <div class="card">
+    <div class="ctitle">Archivo de video</div>
+    <div class="dz" id="dz">
+      <input type="file" id="finput" accept="video/*,.mkv,.avi,.mov">
+      <span class="dz-icon">▶</span>
+      <div class="dz-lbl">Arrastra tu video aquí</div>
+      <div class="dz-sub">MP4 · MKV · AVI · MOV · WEBM</div>
+    </div>
+    <div class="finfo" id="finfo">
+      <div class="fi-icon">🎬</div>
+      <div class="fi-det">
+        <div class="fi-name" id="fname">—</div>
+        <div class="fi-size" id="fsize">—</div>
+      </div>
+      <button class="btn-rm" id="btnrm">QUITAR</button>
+    </div>
+  </div>
+
+  <!-- CODEC -->
+  <div class="card">
+    <div class="ctitle">Codec de video</div>
+    <div class="fg">
+      <label class="flabel">Codec</label>
+      <div class="cpills">
+        <div class="cpill on" data-c="libx264">H.264 (AVC)</div>
+        <div class="cpill" data-c="libx265">H.265 (HEVC)</div>
+        <div class="cpill" data-c="libvpx-vp9">VP9 / WebM</div>
+      </div>
+      <div class="ibox" id="cinfo">
+        <b>H.264</b> — Máxima compatibilidad. Ideal para YouTube, Archive.org y redes sociales.
+      </div>
+    </div>
+    <div class="g2">
+      <div class="fg" style="margin-bottom:0">
+        <label class="flabel">Formato de salida</label>
+        <select id="fmt">
+          <option value="mp4">.mp4</option>
+          <option value="mkv">.mkv</option>
+          <option value="webm">.webm</option>
+        </select>
+      </div>
+      <div class="fg" style="margin-bottom:0">
+        <label class="flabel">Preset velocidad</label>
+        <select id="preset">
+          <option value="ultrafast">Ultrafast</option>
+          <option value="fast">Fast</option>
+          <option value="medium" selected>Medium</option>
+          <option value="slow">Slow</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- CALIDAD -->
+  <div class="card">
+    <div class="ctitle">Calidad y compresión</div>
+    <div class="fg">
+      <label class="flabel">CRF — Factor de calidad constante</label>
+      <div class="rrow">
+        <input type="range" id="crf" min="0" max="51" value="28">
+        <div class="rval" id="crfv">28</div>
+      </div>
+      <div class="ibox" style="margin-top:8px">
+        <b>0</b> = sin pérdida &nbsp;·&nbsp; <b>23</b> = estándar &nbsp;·&nbsp; <b>51</b> = máxima compresión
+      </div>
+    </div>
+    <div class="fg" style="margin-bottom:0">
+      <label class="flabel">Resolución de salida</label>
+      <div class="rgrid">
+        <div class="rbtn" data-r="1920:1080">1080p</div>
+        <div class="rbtn on" data-r="original">Original</div>
+        <div class="rbtn" data-r="1280:720">720p</div>
+        <div class="rbtn" data-r="854:480">480p</div>
+        <div class="rbtn" data-r="640:360">360p</div>
+        <div class="rbtn" data-r="426:240">240p</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AUDIO -->
+  <div class="card">
+    <div class="ctitle">Audio</div>
+    <div class="fg">
+      <div class="g2">
+        <div>
+          <label class="flabel">Codec de audio</label>
+          <select id="acodec">
+            <option value="aac">AAC</option>
+            <option value="libmp3lame">MP3</option>
+            <option value="copy">Copiar (sin recodificar)</option>
+          </select>
+        </div>
+        <div>
+          <label class="flabel">Bitrate de audio</label>
+          <select id="abr">
+            <option value="64k">64 kbps</option>
+            <option value="128k" selected>128 kbps</option>
+            <option value="192k">192 kbps</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="trow">
+      <span class="tlbl">Eliminar audio</span>
+      <label class="tog"><input type="checkbox" id="mute"><div class="togtr"></div></label>
+    </div>
+  </div>
+
+  <!-- COMPRESIÓN -->
+  <div class="card">
+    <div class="ctitle">Compresión y descarga</div>
+
+    <div class="pwrap" id="pwrap">
+      <div class="phdr">
+        <span id="plbl">PROCESANDO...</span>
+        <span id="ppct">0%</span>
+      </div>
+      <div class="pbar"><div class="pfill" id="pfill"></div></div>
+      <div class="logbox" id="logbox"></div>
+    </div>
+
+    <div class="srow" id="srow">
+      <div class="sbox"><span class="sv" id="sorig">—</span><span class="sl">Original</span></div>
+      <div class="sbox"><span class="sv" id="scomp">—</span><span class="sl">Comprimido</span></div>
+      <div class="sbox"><span class="sv" id="ssave">—</span><span class="sl">Ahorro</span></div>
+    </div>
+
+    <button class="btnc" id="btnc"><span>▶ COMPRIMIR VIDEO</span></button>
+    <a class="btnd" id="btnd" href="#">⬇ DESCARGAR VIDEO COMPRIMIDO</a>
+  </div>
+
+  <p class="note">
+    Compresión 100% local en tu navegador · Ningún archivo se sube a servidores<br>
+    Videos grandes pueden tardar varios minutos según la velocidad de tu CPU
+  </p>
+</div>
+
+<!-- FFmpeg UMD — carga directa sin módulos ES, funciona en cualquier contexto -->
+<script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
+<script>
+'use strict';
+
+// ── Referencias UI ────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const loader   = $('loader');
+const ldFill   = $('ldFill');
+const ldMsg    = $('ldMsg');
+const dzEl     = $('dz');
+const finput   = $('finput');
+const finfo    = $('finfo');
+const fname    = $('fname');
+const fsize    = $('fsize');
+const btnrm    = $('btnrm');
+const cinfo    = $('cinfo');
+const crfEl    = $('crf');
+const crfv     = $('crfv');
+const pwrap    = $('pwrap');
+const pfill    = $('pfill');
+const ppct     = $('ppct');
+const plbl     = $('plbl');
+const logbox   = $('logbox');
+const srow     = $('srow');
+const sorig    = $('sorig');
+const scomp    = $('scomp');
+const ssave    = $('ssave');
+const btnc     = $('btnc');
+const btnd     = $('btnd');
+
+// ── Estado ────────────────────────────────────────────────────
+let ffmpeg       = null;
+let ffmpegReady  = false;
+let selFile      = null;
+let selCodec     = 'libx264';
+let selRes       = 'original';
+
+const cinfoMap = {
+  libx264:     '<b>H.264</b> — Máxima compatibilidad. Ideal para YouTube, Archive.org y redes sociales.',
+  libx265:     '<b>H.265 / HEVC</b> — 40-50% menor tamaño que H.264. Más lento. Ideal para almacenar.',
+  'libvpx-vp9':'<b>VP9</b> — Código abierto de Google. Excelente para web. Salida .webm.',
+};
+
+// ── Helpers ───────────────────────────────────────────────────
+function setLd(pct, msg) {
+  ldFill.style.width = pct + '%';
+  if (msg) ldMsg.innerHTML = msg;
+}
+
+function log(msg, cls) {
+  const s = document.createElement('span');
+  s.className = 'll' + (cls ? ' ' + cls : '');
+  s.textContent = '> ' + msg;
+  logbox.appendChild(s);
+  logbox.scrollTop = logbox.scrollHeight;
+}
+
+function prog(pct, lbl) {
+  pfill.style.width = pct + '%';
+  ppct.textContent  = pct + '%';
+  if (lbl) plbl.textContent = lbl;
+}
+
+function fmt(b) {
+  if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+  return (b / 1048576).toFixed(1) + ' MB';
+}
+
+function hideLoader() {
+  loader.classList.add('gone');
+}
+
+// ── Cargar FFmpeg ─────────────────────────────────────────────
+async function initFFmpeg() {
+  try {
+    // Esperar a que los scripts UMD estén listos
+    await new Promise(r => setTimeout(r, 100));
+
+    const { FFmpeg } = FFmpegWASM;
+    const { fetchFile, toBlobURL } = FFmpegUtil;
+
+    ffmpeg = new FFmpeg();
+
+    ffmpeg.on('log', ({ message }) => {
+      if (message && message.trim()) log(message);
+    });
+    ffmpeg.on('progress', ({ progress }) => {
+      prog(Math.min(Math.round(progress * 88) + 8, 96), 'COMPRIMIENDO...');
+    });
+
+    // Descargar core manualmente con fetch para mostrar progreso
+    setLd(5, 'Descargando ffmpeg-core.js...');
+    const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
+
+    async function dlWithProgress(url, mime, ldStart, ldEnd, label) {
+      setLd(ldStart, label);
+      const res  = await fetch(url);
+      const total = parseInt(res.headers.get('content-length') || '0');
+      const reader = res.body.getReader();
+      const chunks = [];
+      let received = 0;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        received += value.length;
+        if (total) {
+          const p = received / total;
+          setLd(ldStart + Math.round(p * (ldEnd - ldStart)),
+            label + ' ' + Math.round(p * 100) + '%');
+        }
+      }
+
+      const blob = new Blob(chunks, { type: mime });
+      return URL.createObjectURL(blob);
+    }
+
+    const coreURL = await dlWithProgress(
+      baseURL + '/ffmpeg-core.js', 'text/javascript', 5, 45, 'Descargando core.js...');
+
+    const wasmURL = await dlWithProgress(
+      baseURL + '/ffmpeg-core.wasm', 'application/wasm', 45, 95, 'Descargando core.wasm...');
+
+    setLd(95, 'Inicializando motor...');
+    await ffmpeg.load({ coreURL, wasmURL });
+
+    setLd(100, '¡Motor listo!');
+    ffmpegReady = true;
+    setTimeout(hideLoader, 500);
+
+  } catch (e) {
+    console.error('FFmpeg init error:', e);
+    setLd(0, '⚠ Error: ' + e.message + '<br>Recarga la página o prueba en Chrome/Firefox.');
+    setTimeout(hideLoader, 5000);
+  }
+}
+
+initFFmpeg();
+
+// ── Dropzone ──────────────────────────────────────────────────
+dzEl.addEventListener('dragover',  e => { e.preventDefault(); dzEl.classList.add('on'); });
+dzEl.addEventListener('dragleave', () => dzEl.classList.remove('on'));
+dzEl.addEventListener('drop', e => {
+  e.preventDefault(); dzEl.classList.remove('on');
+  if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+});
+finput.addEventListener('change', () => { if (finput.files[0]) setFile(finput.files[0]); });
+
+function setFile(f) {
+  selFile = f;
+  fname.textContent = f.name;
+  fsize.textContent = fmt(f.size);
+  finfo.classList.add('on');
+  btnd.classList.remove('on');
+  srow.classList.remove('on');
+  pwrap.classList.remove('on');
+  logbox.innerHTML = '';
+  btnc.innerHTML = '<span>▶ COMPRIMIR VIDEO</span>';
+}
+
+btnrm.addEventListener('click', () => {
+  selFile = null; finput.value = '';
+  finfo.classList.remove('on');
+  btnd.classList.remove('on');
+  srow.classList.remove('on');
+  pwrap.classList.remove('on');
+});
+
+// ── Codec pills ───────────────────────────────────────────────
+document.querySelectorAll('.cpill').forEach(p => {
+  p.addEventListener('click', () => {
+    document.querySelectorAll('.cpill').forEach(x => x.classList.remove('on'));
+    p.classList.add('on');
+    selCodec = p.dataset.c;
+    cinfo.innerHTML = cinfoMap[selCodec] || '';
+    $('fmt').value = selCodec === 'libvpx-vp9' ? 'webm' : 'mp4';
+  });
+});
+
+// ── Res buttons ───────────────────────────────────────────────
+document.querySelectorAll('.rbtn').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.rbtn').forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    selRes = b.dataset.r;
+  });
+});
+
+// ── CRF slider ────────────────────────────────────────────────
+crfEl.addEventListener('input', () => { crfv.textContent = crfEl.value; });
+
+// ── COMPRIMIR ─────────────────────────────────────────────────
+btnc.addEventListener('click', async () => {
+  if (!selFile) { alert('Selecciona un archivo de video primero.'); return; }
+  if (!ffmpegReady || !ffmpeg) { alert('El motor FFmpeg todavía se está cargando.\nEspera a que la barra de carga desaparezca.'); return; }
+
+  const { fetchFile } = FFmpegUtil;
+
+  btnc.disabled = true;
+  btnd.classList.remove('on');
+  srow.classList.remove('on');
+  pwrap.classList.add('on');
+  logbox.innerHTML = '';
+  prog(0, 'CARGANDO ARCHIVO...');
+
+  const ext    = $('fmt').value;
+  const crfVal = crfEl.value;
+  const preset = $('preset').value;
+  const acodec = $('acodec').value;
+  const abr    = $('abr').value;
+  const mute   = $('mute').checked;
+
+  const ts     = Date.now();
+  const inExt  = (selFile.name.split('.').pop() || 'mp4').toLowerCase();
+  const inName = `i${ts}.${inExt}`;
+  const outName= `o${ts}.${ext}`;
+
+  try {
+    log(`Archivo: ${selFile.name} (${fmt(selFile.size)})`);
+    prog(2, 'LEYENDO ARCHIVO...');
+
+    const fd = await fetchFile(selFile);
+    await ffmpeg.writeFile(inName, fd);
+    log('Archivo cargado en memoria virtual.');
+    prog(7, 'CONFIGURANDO...');
+
+    // Build args
+    const args = ['-i', inName, '-c:v', selCodec, '-crf', String(crfVal)];
+
+    if (selCodec === 'libvpx-vp9') {
+      args.push('-deadline', 'realtime', '-cpu-used', '8', '-row-mt', '1');
+    } else if (selCodec === 'libx265') {
+      args.push('-preset', preset, '-tag:v', 'hvc1');
+    } else {
+      args.push('-preset', preset);
+    }
+
+    if (selRes !== 'original') {
+      const [w, h] = selRes.split(':');
+      args.push('-vf', `scale=${w}:${h}:force_original_aspect_ratio=decrease`);
+    }
+
+    if (mute) {
+      args.push('-an');
+    } else if (acodec === 'copy') {
+      args.push('-c:a', 'copy');
+    } else {
+      args.push('-c:a', acodec, '-b:a', abr);
+    }
+
+    if (ext === 'mp4') args.push('-movflags', '+faststart');
+    args.push('-y', outName);
+
+    log(`Codec: ${selCodec} · CRF: ${crfVal}` + (selCodec !== 'libvpx-vp9' ? ` · Preset: ${preset}` : ''));
+    log('Comprimiendo...');
+    prog(8, 'COMPRIMIENDO...');
+
+    await ffmpeg.exec(args);
+
+    prog(97, 'GENERANDO DESCARGA...');
+    const data = await ffmpeg.readFile(outName);
+    const mimes = { mp4:'video/mp4', mkv:'video/x-matroska', webm:'video/webm' };
+    const blob  = new Blob([data.buffer], { type: mimes[ext] || 'video/mp4' });
+
+    // Stats
+    const saving = ((1 - blob.size / selFile.size) * 100).toFixed(1);
+    sorig.textContent = fmt(selFile.size);
+    scomp.textContent = fmt(blob.size);
+    ssave.textContent = saving + '%';
+    srow.classList.add('on');
+
+    // Descarga
+    const url  = URL.createObjectURL(blob);
+    const name = selFile.name.replace(/\.[^.]+$/, '') + '_comprimido.' + ext;
+    btnd.href     = url;
+    btnd.download = name;
+    btnd.textContent = `⬇ DESCARGAR — ${name} (${fmt(blob.size)})`;
+    btnd.classList.add('on');
+
+    prog(100, 'COMPLETADO ✔');
+    log(`✔ ${fmt(selFile.size)} → ${fmt(blob.size)} · Ahorro: ${saving}%`, 'ok');
+
+    // Limpiar FS virtual
+    ffmpeg.deleteFile(inName).catch(() => {});
+    ffmpeg.deleteFile(outName).catch(() => {});
+
+  } catch (err) {
+    log('ERROR: ' + err.message, 'er');
+    prog(0, 'ERROR');
+    console.error(err);
+  }
+
+  btnc.disabled = false;
+  btnc.innerHTML = '<span>▶ COMPRIMIR DE NUEVO</span>';
+});
+</script>
+</body>
+</html>
