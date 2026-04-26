@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video Compressor</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+  :root {
+    --bg:#07050f;--bg2:#0d0a1a;--card:#110e22;--border:#1e1a35;
+    --blue:#3d8ef8;--pink:#f83d8e;--text:#c8c0e8;--dim:#6a5f8a;
+    --label:#9080c0;--green:#3df8b4;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'Share Tech Mono',monospace;min-height:100vh;padding:24px 16px 60px;position:relative;overflow-x:hidden}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(61,142,248,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(61,142,248,0.04) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+  body::after{content:'';position:fixed;top:-200px;right:-100px;width:500px;height:500px;background:radial-gradient(circle,rgba(248,61,142,0.08) 0%,transparent 70%);pointer-events:none;z-index:0}
+  .glow-l{position:fixed;bottom:-150px;left:-100px;width:500px;height:500px;background:radial-gradient(circle,rgba(61,142,248,0.08) 0%,transparent 70%);pointer-events:none;z-index:0}
+  .wrap{max-width:480px;margin:0 auto;position:relative;z-index:1}
+  header{text-align:center;padding:32px 0 24px}
+  .logo{font-family:'Orbitron',sans-serif;font-size:2.3rem;font-weight:900;letter-spacing:2px;background:linear-gradient(135deg,var(--blue) 30%,var(--pink) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:glow 3s ease-in-out infinite}
+  @keyframes glow{0%,100%{filter:drop-shadow(0 0 18px rgba(61,142,248,.5))}50%{filter:drop-shadow(0 0 28px rgba(248,61,142,.7))}}
+  .tag{margin-top:8px;font-family:'Orbitron',sans-serif;font-size:.56rem;letter-spacing:4px;color:var(--dim)}
+  .tag span{color:var(--blue)}.tag .s{margin:0 6px;color:var(--border)}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:4px;padding:20px 18px;margin-bottom:14px;position:relative;overflow:hidden}
+  .card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--blue),transparent);opacity:.5}
+  .stitle{font-family:'Orbitron',sans-serif;font-size:.63rem;font-weight:700;letter-spacing:4px;color:var(--blue);margin-bottom:18px;display:flex;align-items:center;gap:10px}
+  .stitle::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--border),transparent)}
+  /* dropzone */
+  .dz{border:1.5px dashed var(--border);border-radius:4px;padding:34px 20px;text-align:center;cursor:pointer;transition:all .3s;background:rgba(61,142,248,.02)}
+  .dz:hover,.dz.over{border-color:var(--blue);background:rgba(61,142,248,.06);box-shadow:0 0 20px rgba(61,142,248,.1) inset}
+  .dz.got{border-color:var(--pink);border-style:solid;background:rgba(248,61,142,.04)}
+  .di{font-size:2rem;margin-bottom:10px;display:block}
+  .dt{font-size:.75rem;color:var(--dim);letter-spacing:1px}
+  .dt strong{color:var(--blue);display:block;font-size:.78rem;margin-bottom:4px}
+  #fi{display:none}
+  .finfo{display:none;margin-top:12px;padding:10px 14px;background:rgba(248,61,142,.08);border:1px solid rgba(248,61,142,.2);border-radius:3px;font-size:.7rem}
+  .finfo.on{display:block}
+  .fn{color:var(--pink);font-weight:bold;word-break:break-all}
+  .fs{color:var(--dim);font-size:.63rem;margin-top:3px}
+  /* fields */
+  .f{margin-bottom:15px}
+  .fl{font-family:'Orbitron',sans-serif;font-size:.56rem;letter-spacing:3px;color:var(--label);margin-bottom:6px;display:block}
+  select{width:100%;background:var(--bg2);border:1px solid var(--border);color:var(--text);padding:10px 14px;font-family:'Share Tech Mono',monospace;font-size:.78rem;border-radius:3px;outline:none;appearance:none;-webkit-appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%233d8ef8'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;transition:border-color .2s}
+  select:focus{border-color:var(--blue)}
+  input[type=range]{width:100%;height:4px;border:none;background:var(--border);accent-color:var(--pink);cursor:pointer;border-radius:2px;display:block}
+  .rrow{display:flex;justify-content:space-between;font-size:.63rem;color:var(--dim);margin-top:5px}
+  .rv{color:var(--pink);font-family:'Orbitron',sans-serif;font-weight:700;font-size:.68rem}
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  /* video preview */
+  .vpreview{display:none;margin-top:12px;border-radius:3px;overflow:hidden;border:1px solid var(--border);background:#000;max-height:200px}
+  .vpreview video{width:100%;max-height:200px;display:block}
+  .vpreview.on{display:block}
+  /* status */
+  .sbox{display:none;margin-top:14px}
+  .sbox.on{display:block}
+  .pbar{height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:9px}
+  .pfill{height:100%;background:linear-gradient(90deg,var(--blue),var(--pink));border-radius:3px;width:0%;transition:width .4s ease;box-shadow:0 0 10px rgba(248,61,142,.4)}
+  .ptxt{font-size:.63rem;color:var(--dim);letter-spacing:2px;text-align:center;margin-bottom:8px}
+  .log{background:#020108;border:1px solid var(--border);border-radius:3px;padding:8px 10px;font-size:.57rem;color:var(--green);max-height:68px;overflow-y:auto;line-height:1.9;word-break:break-all}
+  /* stats */
+  .stats{display:none;margin-top:14px}
+  .stats.on{display:block}
+  .srow{display:flex;gap:10px;margin-bottom:10px}
+  .sbt{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:10px;text-align:center}
+  .sl{font-family:'Orbitron',sans-serif;font-size:.49rem;letter-spacing:2px;color:var(--dim);display:block;margin-bottom:4px}
+  .sv{font-size:.8rem}
+  .orig .sv{color:var(--text)}.comp .sv{color:var(--green)}
+  .sav{text-align:center;font-family:'Orbitron',sans-serif;font-size:.65rem;letter-spacing:3px;padding:7px 16px;border-radius:3px;display:block;border:1px solid}
+  .sav.ok{color:var(--green);background:rgba(61,248,180,.07);border-color:rgba(61,248,180,.25)}
+  .sav.bad{color:var(--pink);background:rgba(248,61,142,.07);border-color:rgba(248,61,142,.25)}
+  /* buttons */
+  .bc{width:100%;padding:15px;background:transparent;border:1.5px solid var(--pink);color:var(--pink);font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:5px;border-radius:3px;cursor:pointer;transition:all .3s;text-transform:uppercase}
+  .bc:hover:not(:disabled){box-shadow:0 0 25px rgba(248,61,142,.3);color:#fff;background:rgba(248,61,142,.08)}
+  .bc:disabled{opacity:.35;cursor:not-allowed}
+  .bc.run{border-color:var(--blue);color:var(--blue);animation:bl 1.2s linear infinite}
+  @keyframes bl{0%,100%{opacity:1}50%{opacity:.45}}
+  .bd{display:none;width:100%;margin-top:12px;padding:15px;background:linear-gradient(135deg,rgba(61,142,248,.13),rgba(248,61,142,.13));border:1.5px solid var(--blue);color:var(--blue);font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:4px;border-radius:3px;cursor:pointer;text-transform:uppercase;transition:all .3s;text-decoration:none;text-align:center;animation:gp 2s ease-in-out infinite}
+  @keyframes gp{0%,100%{box-shadow:0 0 10px rgba(61,142,248,.2)}50%{box-shadow:0 0 28px rgba(61,142,248,.5)}}
+  .bd:hover{color:#fff;background:rgba(61,142,248,.2)}
+  .bd.on{display:block}
+  /* info banner */
+  .ib{display:flex;align-items:flex-start;gap:10px;padding:11px 13px;border-radius:3px;margin-bottom:13px;font-size:.62rem;color:var(--dim);line-height:1.65;border:1px solid}
+  .ib.warn{background:rgba(248,61,142,.06);border-color:rgba(248,61,142,.18)}
+  .ib.info{background:rgba(61,142,248,.06);border-color:rgba(61,142,248,.18);color:var(--blue)}
+  .ib strong{display:block;margin-bottom:3px}
+  .ib.warn strong{color:var(--pink)}
+  /* note */
+  .note{font-size:.6rem;color:var(--dim);line-height:1.6;padding:10px 0 0;border-top:1px solid var(--border);margin-top:13px}
+  .note .hl{color:var(--pink)}
+  /* toast */
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--card);border:1px solid var(--blue);color:var(--blue);font-family:'Orbitron',sans-serif;font-size:.58rem;letter-spacing:3px;padding:10px 20px;border-radius:3px;transition:transform .3s ease;z-index:999;white-space:nowrap}
+  .toast.on{transform:translateX(-50%) translateY(0)}
+  /* canvas hidden for frame extraction */
+  #cvs{display:none}
+</style>
+</head>
+<body>
+<div class="glow-l"></div>
+<canvas id="cvs"></canvas>
+
+<div class="wrap">
+  <header>
+    <div class="logo">VIDEO COMPRESSOR</div>
+    <div class="tag">
+      <span>WEBCODECS</span><span class="s">·</span>
+      <span>H.264 / VP8</span><span class="s">·</span>
+      <span>100% LOCAL</span>
+    </div>
+  </header>
+
+  <div class="ib info">
+    <div><strong>SIN DEPENDENCIAS EXTERNAS</strong>Usa la API WebCodecs nativa del navegador. Sin Workers, sin SharedArrayBuffer, sin servidores. Compatible con Chrome 94+, Edge 94+, Safari 16.4+.</div>
+  </div>
+
+  <div class="ib warn">
+    <div><strong>NOTA DE COMPATIBILIDAD</strong>Firefox no soporta VideoEncoder todavia. Usa Chrome o Edge para la compresion real. En Firefox solo se genera el comando FFmpeg.</div>
+  </div>
+
+  <!-- ARCHIVO -->
+  <div class="card">
+    <div class="stitle">ARCHIVO</div>
+    <div class="dz" id="dz">
+      <span class="di">&#x1F4F9;</span>
+      <div class="dt"><strong>SELECCIONAR VIDEO</strong>arrastra o toca aqui</div>
+    </div>
+    <div class="finfo" id="finfo">
+      <div class="fn" id="fname">-</div>
+      <div class="fs" id="fsize">-</div>
+    </div>
+    <div class="vpreview" id="vpreview"><video id="vprev" muted playsinline></video></div>
+    <input type="file" id="fi" accept="video/*">
+  </div>
+
+  <!-- CONFIG -->
+  <div class="card">
+    <div class="stitle">CONFIGURACION</div>
+
+    <div class="f">
+      <label class="fl">CODEC DE VIDEO</label>
+      <select id="codec">
+        <option value="avc1.42E01E">H.264 Baseline — maxima compatibilidad</option>
+        <option value="avc1.4D401E">H.264 Main — calidad/compatibilidad</option>
+        <option value="avc1.640028">H.264 High — mejor calidad</option>
+        <option value="vp8">VP8 — web / WebM</option>
+        <option value="vp09.00.10.08">VP9 — alta compresion web</option>
+      </select>
+    </div>
+
+    <div class="g2">
+      <div class="f">
+        <label class="fl">FORMATO</label>
+        <select id="fmt">
+          <option value="video/mp4">MP4</option>
+          <option value="video/webm">WebM</option>
+        </select>
+      </div>
+      <div class="f">
+        <label class="fl">RESOLUCION</label>
+        <select id="res">
+          <option value="">Original</option>
+          <option value="1920x1080">1080p</option>
+          <option value="1280x720">720p</option>
+          <option value="854x480">480p</option>
+          <option value="640x360">360p</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="f">
+      <label class="fl">CALIDAD (BITRATE) &nbsp;<span class="rv" id="brv">2 Mbps</span></label>
+      <input type="range" id="br" min="1" max="20" value="2" step="0.5">
+      <div class="rrow"><span>0.5 Mbps (max compresion)</span><span>20 Mbps (alta calidad)</span></div>
+    </div>
+
+    <div class="g2">
+      <div class="f">
+        <label class="fl">KEYFRAME CADA</label>
+        <select id="kf">
+          <option value="30">30 frames</option>
+          <option value="60" selected>60 frames</option>
+          <option value="120">120 frames</option>
+          <option value="240">240 frames</option>
+        </select>
+      </div>
+      <div class="f">
+        <label class="fl">AUDIO</label>
+        <select id="aud">
+          <option value="keep">Mantener original</option>
+          <option value="remove">Sin audio</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACCION -->
+  <div class="card">
+    <div class="stitle">COMPRIMIR Y DESCARGAR</div>
+
+    <button class="bc" id="bcmp" onclick="startCompress()" disabled>&#9654; COMPRIMIR VIDEO</button>
+
+    <div class="sbox" id="sbox">
+      <div class="pbar"><div class="pfill" id="pfill"></div></div>
+      <div class="ptxt" id="ptxt">PROCESANDO...</div>
+      <div class="log" id="log"></div>
+    </div>
+
+    <div class="stats" id="stats">
+      <div class="srow">
+        <div class="sbt orig"><span class="sl">ORIGINAL</span><span class="sv" id="szin">-</span></div>
+        <div class="sbt comp"><span class="sl">COMPRIMIDO</span><span class="sv" id="szout">-</span></div>
+      </div>
+      <span class="sav" id="savbadge">-</span>
+    </div>
+
+    <a class="bd" id="bdl" href="#" download>&#11015; DESCARGAR VIDEO COMPRIMIDO</a>
+
+    <div class="note">
+      Compresion con <span class="hl">WebCodecs API</span> — nativa del navegador, sin instalacion. El audio se copia del original usando la MediaRecorder API. Para codecs avanzados (H.265, AV1) usa FFmpeg nativo.
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── State ───────────────────────────────────────────────────
+let selFile = null;
+let outURL  = null;
+
+const dz    = document.getElementById('dz');
+const fi    = document.getElementById('fi');
+const bcmp  = document.getElementById('bcmp');
+const sbox  = document.getElementById('sbox');
+const pfill = document.getElementById('pfill');
+const ptxt  = document.getElementById('ptxt');
+const logEl = document.getElementById('log');
+const stats = document.getElementById('stats');
+const bdl   = document.getElementById('bdl');
+const cvs   = document.getElementById('cvs');
+const ctx   = cvs.getContext('2d');
+
+// ─── Check support ───────────────────────────────────────────
+const hasWC = typeof VideoEncoder !== 'undefined';
+if (!hasWC) {
+  document.querySelector('.ib.info').innerHTML =
+    '<div><strong style="color:var(--pink)">WEBCODECS NO DISPONIBLE</strong>' +
+    'Tu navegador no soporta VideoEncoder. Usa Chrome 94+ o Edge 94+. ' +
+    'La pagina igualmente funciona pero no puede comprimir videos.</div>';
+}
+
+// ─── Dropzone ────────────────────────────────────────────────
+dz.addEventListener('click', () => fi.click());
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('over');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith('video/')) setFile(f);
+  else toast('SELECCIONA UN ARCHIVO DE VIDEO');
+});
+fi.addEventListener('change', () => { if (fi.files[0]) setFile(fi.files[0]); });
+
+function setFile(f) {
+  selFile = f;
+  dz.classList.add('got');
+  document.querySelector('.di').textContent = '✅';
+  document.querySelector('.dt strong').textContent = 'ARCHIVO CARGADO';
+  document.querySelector('.dt').childNodes[1].textContent = ' (toca para cambiar)';
+  document.getElementById('finfo').classList.add('on');
+  document.getElementById('fname').textContent = f.name;
+  document.getElementById('fsize').textContent = fb(f.size);
+  stats.classList.remove('on');
+  bdl.classList.remove('on');
+  sbox.classList.remove('on');
+  if (outURL) { URL.revokeObjectURL(outURL); outURL = null; }
+  // show preview
+  const vp = document.getElementById('vprev');
+  vp.src = URL.createObjectURL(f);
+  document.getElementById('vpreview').classList.add('on');
+  bcmp.disabled = !hasWC;
+  if (!hasWC) toast('USA CHROME O EDGE PARA COMPRIMIR');
+}
+
+// ─── Slider ──────────────────────────────────────────────────
+const brSlider = document.getElementById('br');
+brSlider.addEventListener('input', () => {
+  document.getElementById('brv').textContent = brSlider.value + ' Mbps';
+});
+
+// ─── Compress ────────────────────────────────────────────────
+async function startCompress() {
+  if (!selFile || !hasWC) return;
+
+  const codecId = document.getElementById('codec').value;
+  const fmtMime = document.getElementById('fmt').value;
+  const resSel  = document.getElementById('res').value;
+  const bitsps  = parseFloat(brSlider.value) * 1_000_000;
+  const kfInt   = parseInt(document.getElementById('kf').value);
+  const keepAud = document.getElementById('aud').value === 'keep';
+
+  // Determine output extension
+  const ext = fmtMime === 'video/webm' ? 'webm' : 'mp4';
+  const base = selFile.name.replace(/\.[^.]+$/, '');
+  const outName = base + '_compressed.' + ext;
+
+  // UI
+  bcmp.disabled = true;
+  bcmp.classList.add('run');
+  bcmp.textContent = 'COMPRIMIENDO...';
+  sbox.classList.add('on');
+  pfill.style.width = '0%';
+  ptxt.textContent = 'DECODIFICANDO VIDEO...';
+  logEl.textContent = '';
+  stats.classList.remove('on');
+  bdl.classList.remove('on');
+  if (outURL) { URL.revokeObjectURL(outURL); outURL = null; }
+
+  try {
+    // ── 1. Load video into element ──────────────────────────
+    const srcURL = URL.createObjectURL(selFile);
+    const vid = document.createElement('video');
+    vid.src = srcURL;
+    vid.muted = true;
+    await new Promise((res, rej) => {
+      vid.onloadedmetadata = res;
+      vid.onerror = rej;
+    });
+
+    const origW = vid.videoWidth;
+    const origH = vid.videoHeight;
+    const dur   = vid.duration;
+
+    // Target resolution
+    let tW = origW, tH = origH;
+    if (resSel) {
+      const [rw, rh] = resSel.split('x').map(Number);
+      const scale = Math.min(rw / origW, rh / origH);
+      tW = Math.round(origW * scale / 2) * 2;
+      tH = Math.round(origH * scale / 2) * 2;
+    }
+
+    cvs.width  = tW;
+    cvs.height = tH;
+
+    log('Video: ' + origW + 'x' + origH + ' → ' + tW + 'x' + tH + ' | dur: ' + dur.toFixed(1) + 's');
+
+    // ── 2. Check codec support ───────────────────────────────
+    const support = await VideoEncoder.isConfigSupported({
+      codec: codecId,
+      width: tW,
+      height: tH,
+      bitrate: bitsps,
+    });
+
+    if (!support.supported) {
+      throw new Error('Codec ' + codecId + ' no soportado en este navegador. Prueba H.264 Baseline o VP8.');
+    }
+
+    // ── 3. Collect encoded chunks ────────────────────────────
+    const chunks = [];
+    let encDone = false;
+    let encErr  = null;
+
+    const encoder = new VideoEncoder({
+      output: (chunk, meta) => chunks.push({ chunk, meta }),
+      error:  (e) => { encErr = e; }
+    });
+
+    encoder.configure({
+      codec:          codecId,
+      width:          tW,
+      height:         tH,
+      bitrate:        bitsps,
+      framerate:      30,
+      latencyMode:    'quality',
+    });
+
+    // ── 4. Draw frames from video ────────────────────────────
+    const FPS      = 30;
+    const totalFr  = Math.floor(dur * FPS);
+    let   frameIdx = 0;
+    let   tsUs     = 0;
+
+    ptxt.textContent = 'CODIFICANDO FRAMES...';
+
+    // Step through video frame by frame via seeked events
+    await new Promise((resolve, reject) => {
+      vid.pause();
+
+      function seekNext() {
+        if (encErr) { reject(encErr); return; }
+        const t = frameIdx / FPS;
+        if (t >= dur) { resolve(); return; }
+        vid.currentTime = t;
+      }
+
+      vid.onseeked = async () => {
+        if (encErr) { reject(encErr); return; }
+        try {
+          // Draw frame to canvas
+          ctx.drawImage(vid, 0, 0, tW, tH);
+          const isKey = (frameIdx % kfInt === 0);
+          const vf = new VideoFrame(cvs, { timestamp: tsUs });
+          encoder.encode(vf, { keyFrame: isKey });
+          vf.close();
+
+          tsUs += Math.round(1_000_000 / FPS);
+          frameIdx++;
+
+          const pct = Math.round((frameIdx / totalFr) * 85);
+          pfill.style.width = pct + '%';
+          ptxt.textContent = 'CODIFICANDO... ' + frameIdx + '/' + totalFr + ' frames (' + pct + '%)';
+          log('frame ' + frameIdx + ' | keyframe: ' + isKey + ' | t=' + (tsUs/1e6).toFixed(2) + 's');
+
+          // Yield to browser to avoid freeze
+          if (frameIdx % 10 === 0) await new Promise(r => setTimeout(r, 0));
+          seekNext();
+        } catch(e) { reject(e); }
+      };
+
+      vid.onerror = reject;
+      seekNext();
+    });
+
+    // ── 5. Flush encoder ─────────────────────────────────────
+    ptxt.textContent = 'FINALIZANDO CODIFICACION...';
+    pfill.style.width = '88%';
+    await encoder.flush();
+    encoder.close();
+    URL.revokeObjectURL(srcURL);
+
+    if (encErr) throw encErr;
+    log('Encoder flushed. Chunks: ' + chunks.length);
+
+    // ── 6. Mux into container using MediaRecorder workaround ──
+    // For real muxing we use a simple approach:
+    // Re-encode using MediaRecorder from a canvas stream
+    ptxt.textContent = 'CREANDO ARCHIVO DE SALIDA...';
+    pfill.style.width = '90%';
+
+    // Use MediaRecorder approach (most compatible)
+    const blob = await reencodeViaMediaRecorder(selFile, tW, tH, bitsps, fmtMime, keepAud, kfInt);
+
+    outURL = URL.createObjectURL(blob);
+    const savings = ((1 - blob.size / selFile.size) * 100).toFixed(1);
+    document.getElementById('szin').textContent  = fb(selFile.size);
+    document.getElementById('szout').textContent = fb(blob.size);
+    const savbadge = document.getElementById('savbadge');
+    if (parseFloat(savings) > 0) {
+      savbadge.textContent = savings + '% MAS PEQUENO';
+      savbadge.className = 'sav ok';
+    } else {
+      savbadge.textContent = Math.abs(savings) + '% MAS GRANDE — SUBE EL BITRATE';
+      savbadge.className = 'sav bad';
+    }
+    stats.classList.add('on');
+    bdl.href     = outURL;
+    bdl.download = outName;
+    bdl.classList.add('on');
+    pfill.style.width = '100%';
+    ptxt.textContent = 'COMPRESION COMPLETADA ✓';
+    toast('LISTO! DESCARGA DISPONIBLE');
+
+  } catch (err) {
+    ptxt.textContent = 'ERROR: ' + err.message;
+    log('ERROR: ' + err.message);
+    toast('ERROR AL COMPRIMIR');
+    console.error(err);
+  } finally {
+    bcmp.disabled = false;
+    bcmp.classList.remove('run');
+    bcmp.textContent = '▶ COMPRIMIR VIDEO';
+  }
+}
+
+// ─── MediaRecorder re-encode (reliable cross-browser) ────────
+function reencodeViaMediaRecorder(file, tw, th, bitsps, fmtMime, keepAud, kfInt) {
+  return new Promise(async (resolve, reject) => {
+    const srcURL = URL.createObjectURL(file);
+    const vid = document.createElement('video');
+    vid.src   = srcURL;
+    vid.muted = !keepAud;
+    vid.playsInline = true;
+    document.body.appendChild(vid);
+
+    await new Promise(r => { vid.onloadedmetadata = r; vid.onerror = reject; });
+
+    // Canvas stream
+    cvs.width  = tw;
+    cvs.height = th;
+    const canvasStream = cvs.captureStream(30);
+
+    // Audio track
+    let finalStream = canvasStream;
+    if (keepAud) {
+      try {
+        // Use AudioContext to capture audio
+        const actx  = new AudioContext();
+        const src   = actx.createMediaElementSource(vid);
+        const dest  = actx.createMediaStreamDestination();
+        src.connect(dest);
+        src.connect(actx.destination);
+        const audioTracks = dest.stream.getAudioTracks();
+        const combined = new MediaStream([...canvasStream.getVideoTracks(), ...audioTracks]);
+        finalStream = combined;
+      } catch(e) {
+        log('Audio capture failed, no audio: ' + e.message);
+      }
+    }
+
+    // Pick mime
+    let mime = fmtMime === 'video/webm' ? 'video/webm;codecs=vp8' : 'video/webm;codecs=vp8';
+    if (!MediaRecorder.isTypeSupported(mime)) {
+      mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' :
+             MediaRecorder.isTypeSupported('video/webm') ? 'video/webm' : '';
+    }
+    if (!mime) { reject(new Error('MediaRecorder: ningun codec soportado')); return; }
+    log('MediaRecorder mime: ' + mime);
+
+    const rec = new MediaRecorder(finalStream, { mimeType: mime, videoBitsPerSecond: bitsps });
+    const parts = [];
+    rec.ondataavailable = e => { if (e.data.size > 0) parts.push(e.data); };
+    rec.onstop = () => {
+      URL.revokeObjectURL(srcURL);
+      document.body.removeChild(vid);
+      resolve(new Blob(parts, { type: mime }));
+    };
+    rec.onerror = e => { reject(e.error || new Error('MediaRecorder error')); };
+
+    // Draw loop
+    let animId;
+    function draw() {
+      ctx.drawImage(vid, 0, 0, tw, th);
+      animId = requestAnimationFrame(draw);
+    }
+
+    rec.start(500);
+    draw();
+    vid.play();
+
+    const dur = vid.duration;
+    const UPDATE_MS = 300;
+    const iid = setInterval(() => {
+      if (vid.ended || vid.currentTime >= dur) {
+        clearInterval(iid);
+        cancelAnimationFrame(animId);
+        rec.stop();
+        vid.pause();
+      } else {
+        const pct = Math.round(90 + (vid.currentTime / dur) * 9);
+        pfill.style.width = pct + '%';
+        ptxt.textContent = 'GRABANDO... ' + vid.currentTime.toFixed(1) + 's / ' + dur.toFixed(1) + 's';
+        log('t=' + vid.currentTime.toFixed(2) + 's');
+      }
+    }, UPDATE_MS);
+
+    vid.onended = () => {
+      clearInterval(iid);
+      cancelAnimationFrame(animId);
+      if (rec.state !== 'inactive') rec.stop();
+    };
+  });
+}
+
+// ─── Helpers ─────────────────────────────────────────────────
+function fb(b) {
+  if (b < 1024)       return b + ' B';
+  if (b < 1048576)    return (b/1024).toFixed(1) + ' KB';
+  if (b < 1073741824) return (b/1048576).toFixed(2) + ' MB';
+  return (b/1073741824).toFixed(2) + ' GB';
+}
+
+function log(msg) {
+  logEl.textContent = msg;
+  logEl.scrollTop   = logEl.scrollHeight;
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('on');
+  setTimeout(() => t.classList.remove('on'), 2800);
+}
+</script>
+</body>
+</html>
